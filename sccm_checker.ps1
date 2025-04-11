@@ -97,7 +97,7 @@ function Check-ClientPolicies {
 
 # Check if SCCM Admins Have Local Admin Rights on Clients
 function Check-LocalAdminOnClients {
-    $localAdmins = Get-WmiObject -Class Win32_GroupUser -Filter "GroupComponent='Win32_Group.Domain=`'Administrators`''"
+    $localAdmins = Get-WmiObject -Class Win32_GroupUser -Filter  -Filter "GroupComponent='Win32_Group.Domain=`"Administrators`"'"  
     if ($localAdmins) {
         Write-Host "[!] SCCM Admins Have Local Admin Rights on Clients!" -ForegroundColor Red
         $localAdmins | Format-Table -AutoSize
