@@ -3,20 +3,20 @@
 # Objective: Identify misconfigurations, vulnerabilities, and attack paths in Microsoft SCCM
 # Note: This script is non-intrusive and does not cause downtime.
 
-Write-Host "🚨 Starting SCCM Red Team Security Audit..." -ForegroundColor Red
+Write-Host "[+] Starting SCCM Red Team Security Audit..." -ForegroundColor Red
 
 # Ensure Script is Running as Administrator
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Host "⚠️ Please run this script as Administrator." -ForegroundColor Red
+    Write-Host "[!] Please run this script as Administrator." -ForegroundColor Red
     exit
 }
 
 # Check if SCCM is Installed
 function Check-SCCMInstallation {
     if (Test-Path "HKLM:\Software\Microsoft\SMS") {
-        Write-Host "[✔] SCCM is installed." -ForegroundColor Green
+        Write-Host "[+] SCCM is installed." -ForegroundColor Green
     } else {
-        Write-Host "[X] SCCM not found. Exiting..." -ForegroundColor Red
+        Write-Host "[!] SCCM not found. Exiting..." -ForegroundColor Red
         exit
     }
 }
@@ -25,8 +25,8 @@ function Check-SCCMInstallation {
 function Identify-SCCM {
     $site = Get-WmiObject -Namespace "root\SMS" -Class SMS_ProviderLocation -ErrorAction SilentlyContinue
     if ($site) {
-        Write-Host "[✔] SCCM Site Server: $($site.Machine)" -ForegroundColor Green
-        Write-Host "[✔] SCCM Site Code: $($site.SiteCode)" -ForegroundColor Yellow
+        Write-Host "[+] SCCM Site Server: $($site.Machine)" -ForegroundColor Green
+        Write-Host "[+] SCCM Site Code: $($site.SiteCode)" -ForegroundColor Yellow
     }
 }
 
@@ -36,7 +36,7 @@ function Check-HTTPUsage {
     if ($httpSetting -and $httpSetting.HTTPSRequired -eq 0) {
         Write-Host "[!] SCCM is using HTTP instead of HTTPS. Weak encryption detected!" -ForegroundColor Red
     } else {
-        Write-Host "[✔] SCCM is using HTTPS." -ForegroundColor Green
+        Write-Host "[+] SCCM is using HTTPS." -ForegroundColor Green
     }
 }
 
@@ -45,7 +45,7 @@ function Extract-SQLCreds {
     $sqlPath = "HKLM:\SOFTWARE\Microsoft\SMS\SQL Server"
     if (Test-Path $sqlPath) {
         $sqlInstance = (Get-ItemProperty $sqlPath).DatabaseServer
-        Write-Host "[✔] SCCM SQL Server Found: $sqlInstance" -ForegroundColor Yellow
+        Write-Host "[+] SCCM SQL Server Found: $sqlInstance" -ForegroundColor Yellow
         $creds = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\SMS" | Select-Object *sql*
         if ($creds) {
             Write-Host "[!] SCCM Database Credentials Found:" -ForegroundColor Red
@@ -60,7 +60,7 @@ function Check-ClientPush {
     if ($clientPush -and $clientPush.EnableClientPush -eq 1) {
         Write-Host "[!] Client Push Installation is enabled. Lateral movement risk detected!" -ForegroundColor Red
     } else {
-        Write-Host "[✔] Client Push is disabled." -ForegroundColor Green
+        Write-Host "[+] Client Push is disabled." -ForegroundColor Green
     }
 }
 
@@ -71,7 +71,7 @@ function Check-SQLPermissions {
     if ($sqlInstance) {
         $result = Invoke-Sqlcmd -ServerInstance $sqlInstance -Query $query -ErrorAction SilentlyContinue
         if ($result) {
-            Write-Host "[✔] SQL Logins Identified:" -ForegroundColor Green
+            Write-Host "[+] SQL Logins Identified:" -ForegroundColor Green
             $result | Format-Table -AutoSize
         }
     }
@@ -81,7 +81,7 @@ function Check-SQLPermissions {
 function Check-ServiceAccountPrivileges {
     $sccmServices = Get-WmiObject -Namespace "root\cimv2" -Class Win32_Service | Where-Object { $_.Name -match "sms" }
     foreach ($service in $sccmServices) {
-        Write-Host "[✔] SCCM Service: $($service.Name)" -ForegroundColor Yellow
+        Write-Host "[+] SCCM Service: $($service.Name)" -ForegroundColor Yellow
         Write-Host "[!] Service Account: $($service.StartName)" -ForegroundColor Cyan
     }
 }
@@ -90,7 +90,7 @@ function Check-ServiceAccountPrivileges {
 function Check-ClientPolicies {
     $policies = Get-WmiObject -Namespace "root\CCM\Policy" -Class CCM_PolicyCache -ErrorAction SilentlyContinue
     if ($policies) {
-        Write-Host "[✔] Client Policies Found:" -ForegroundColor Green
+        Write-Host "[+] Client Policies Found:" -ForegroundColor Green
         $policies | Select-Object PolicyID, PolicyType, PolicySource | Format-Table -AutoSize
     }
 }
@@ -102,7 +102,7 @@ function Check-LocalAdminOnClients {
         Write-Host "[!] SCCM Admins Have Local Admin Rights on Clients!" -ForegroundColor Red
         $localAdmins | Format-Table -AutoSize
     } else {
-        Write-Host "[✔] SCCM Admins do not have local admin rights on clients." -ForegroundColor Green
+        Write-Host "[+] SCCM Admins do not have local admin rights on clients." -ForegroundColor Green
     }
 }
 
@@ -110,7 +110,7 @@ function Check-LocalAdminOnClients {
 function Enum-SCCMSiteRoles {
     $siteRoles = Get-WmiObject -Namespace "root\SMS" -Class SMS_SCI_Role
     if ($siteRoles) {
-        Write-Host "[✔] SCCM Site System Roles Identified:" -ForegroundColor Green
+        Write-Host "[+] SCCM Site System Roles Identified:" -ForegroundColor Green
         $siteRoles | Select-Object RoleName, ServerName | Format-Table -AutoSize
     }
 }
@@ -119,7 +119,7 @@ function Enum-SCCMSiteRoles {
 function Enum-SCCMAdmins {
     $sccmAdmins = Get-WmiObject -Namespace "root\SMS" -Class SMS_User -ErrorAction SilentlyContinue
     if ($sccmAdmins) {
-        Write-Host "[✔] SCCM Admins Identified:" -ForegroundColor Yellow
+        Write-Host "[+] SCCM Admins Identified:" -ForegroundColor Yellow
         $sccmAdmins | Select-Object UserName | Format-Table -AutoSize
     } else {
         Write-Host "[!] No SCCM Admins Found." -ForegroundColor Red
@@ -130,7 +130,7 @@ function Enum-SCCMAdmins {
 function Scan-SCCMLogs {
     $logPath = "C:\Program Files\Microsoft Configuration Manager\Logs"
     if (Test-Path $logPath) {
-        Write-Host "[✔] Checking SCCM logs for credential leaks..." -ForegroundColor Yellow
+        Write-Host "[+] Checking SCCM logs for credential leaks..." -ForegroundColor Yellow
         Get-ChildItem -Path $logPath -Filter "*.log" -Recurse | ForEach-Object {
             if (Select-String -Path $_.FullName -Pattern "password|pwd|authentication failed" -Quiet) {
                 Write-Host "[!] Credential Leak in Log File: $($_.FullName)" -ForegroundColor Red
@@ -143,7 +143,7 @@ function Scan-SCCMLogs {
 function Check-WMIPersistence {
     $wmiFilters = Get-WmiObject -Namespace "root\Subscription" -Class __EventFilter
     if ($wmiFilters) {
-        Write-Host "[!] Possible WMI Persistence Found:" -ForegroundColor Red
+        Write-Host "[+] Possible WMI Persistence Found:" -ForegroundColor Red
         $wmiFilters | Select-Object Name, Query | Format-Table -AutoSize
     }
 }
@@ -169,10 +169,10 @@ function Check-RegistryPersistence {
 function Check-SCCMTaskSequences {
     $taskSequences = Get-WmiObject -Namespace "root\SMS\Site_$($env:COMPUTERNAME)" -Class SMS_TaskSequencePackage -ErrorAction SilentlyContinue
     if ($taskSequences) {
-        Write-Host "[✔] SCCM Task Sequences Found (Potential Hijack Targets):" -ForegroundColor Yellow
+        Write-Host "[+] SCCM Task Sequences Found (Potential Hijack Targets):" -ForegroundColor Yellow
         $taskSequences | Select-Object PackageID, Name, Version | Format-Table -AutoSize
     } else {
-        Write-Host "[✔] No SCCM Task Sequences Found." -ForegroundColor Green
+        Write-Host "[+] No SCCM Task Sequences Found." -ForegroundColor Green
     }
 }
 
@@ -182,7 +182,7 @@ function Check-CMTraceExecution {
     if (Test-Path $cmtracePath) {
         Write-Host "[!] CMTrace found. Potential lateral movement vector!" -ForegroundColor Red
     } else {
-        Write-Host "[✔] CMTrace not found on this system." -ForegroundColor Green
+        Write-Host "[+] CMTrace not found on this system." -ForegroundColor Green
     }
 }
 
@@ -204,4 +204,4 @@ Check-SCCMTaskSequences
 Check-CMTraceExecution
 Enum-SCCMAdmins
 
-Write-Host "🚨 SCCM Red Team Security Audit Completed." -ForegroundColor Red
+Write-Host "[+] SCCM Red Team Security Audit Completed." -ForegroundColor Red
